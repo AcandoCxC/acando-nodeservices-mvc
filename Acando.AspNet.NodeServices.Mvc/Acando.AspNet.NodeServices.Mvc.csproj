@@ -75,6 +75,7 @@
   <ItemGroup>
     <Compile Include="NodeBaseController.cs" />
     <Compile Include="NodeResult.cs" />
+    <Compile Include="NodeResultBuilder.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

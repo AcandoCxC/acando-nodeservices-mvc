@@ -5,14 +5,21 @@ namespace Acando.AspNet.NodeServices.Mvc
     public class NodeResult : ActionResult
     {
         private readonly string _data;
+        private readonly bool _isJson;
 
-        public NodeResult(string data)
+        public NodeResult(string data, bool isJson = false)
         {
             _data = data;
+            _isJson = isJson;
         }
 
         public override void ExecuteResult(ControllerContext context)
         {
+            if (_isJson)
+            {
+                context.HttpContext.Response.ContentType = "application/json";
+            }
+
             context.HttpContext.Response.Write(_data);
         }
     }
