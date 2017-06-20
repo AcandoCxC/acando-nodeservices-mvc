@@ -9,6 +9,7 @@ namespace Acando.AspNet.NodeServices.Mvc
     using System.Configuration;
     using System.Web.Mvc;
     using Newtonsoft.Json;
+    using Newtonsoft.Json.Linq;
     using Newtonsoft.Json.Serialization;
 
     public class NodeBaseController : Controller
@@ -25,66 +26,54 @@ namespace Acando.AspNet.NodeServices.Mvc
             _nodeServerEntryFilePath = ConfigurationManager.AppSettings["NodeServerEntryFilePath"] ?? "./react.server";
         }
 
-        /// <summary>
-        /// Returns a NodeResult with the input params as input to the node method
-        /// </summary>
-        /// <param name="paramsObjects"></param>
-        /// <returns></returns>
-        protected async Task<NodeResult> NodeResultAsync(params object[] paramsObjects)
+        private class ParamsWrapper
         {
-            string[] jsonObjects = new string[paramsObjects.Length];
-            
-            for (int i = 0; i < paramsObjects.Length ; i++)
+            public ParamsWrapper(object globalData, object routeData)
             {
-                // object is most likely already serialized to json
-                if (paramsObjects[i] is string)
+                GlobalData = globalData;
+
+                if (routeData is string)
                 {
-                    jsonObjects[i] = paramsObjects[i].ToString();
+                    RouteData = JsonConvert.DeserializeObject(routeData.ToString());
                 }
                 else
                 {
-                    jsonObjects[i] = JsonConvert.SerializeObject(paramsObjects[i], _serializerSettings);
+                    RouteData = routeData;
                 }
             }
-            
-            var result = await _nodeServices.InvokeAsync<string>(_nodeServerEntryFilePath, HttpContext.Request.Url?.LocalPath ?? "/", jsonObjects);
+
+            public object GlobalData { get; set; }
+            public object RouteData { get; set; }
+        }
+
+        /// <summary>
+        /// Returns a NodeResult with the input params as input to the node method
+        /// </summary>
+        /// <returns></returns>
+        protected async Task<NodeResult> NodeResultAsync(object customData)
+        {
+            var result = await _nodeServices.InvokeAsync<string>(_nodeServerEntryFilePath, HttpContext.Request.Url?.LocalPath ?? "/", JsonConvert.SerializeObject(customData, _serializerSettings));
+            return new NodeResult(result);
+        }
+        
+        /// <summary>
+        /// Returns a NodeResult with the input params as input to the node method
+        /// </summary>
+        /// <returns></returns>
+        protected async Task<NodeResult> NodeResultAsync(object globalData, object routeData)
+        {
+            var result = await _nodeServices.InvokeAsync<string>(_nodeServerEntryFilePath, HttpContext.Request.Url?.LocalPath ?? "/", JsonConvert.SerializeObject(new ParamsWrapper(globalData, routeData), _serializerSettings));
             return new NodeResult(result);
         }
 
         /// <summary>
         /// Returns a NodeResult based on a custom NodeServerEntryFilePath
         /// </summary>
-        /// <param name="paramsObjects">First object must be a string containing NodeServerEntryFilePath</param>
         /// <returns></returns>
-        protected async Task<NodeResult> NodeResultEntryFileAsync(params object[] paramsObjects)
+        protected async Task<NodeResult> NodeResultEntryFileAsync(string entryFilePath, object globalData, object routeData)
         {
-            string[] jsonObjects = new string[paramsObjects.Length];
-
-            if (paramsObjects.Length < 1)
-            {
-                throw new ArgumentException("Expected at least one object in params.");
-            }
-
-            if (!(paramsObjects[0] is string))
-            {
-                throw new ArgumentException("First param must be of type string and contain a NodeServerEntryFilePath ");
-            }
-
-            for (int i = 1; i < paramsObjects.Length; i++)
-            {
-                if (paramsObjects[i] is string)
-                {
-                    // object is most likely already serialized
-                    jsonObjects[i-1] = paramsObjects[i].ToString();
-                }
-                else
-                {
-                    jsonObjects[i-1] = JsonConvert.SerializeObject(paramsObjects[i], _serializerSettings);
-                }
-            }
-
-            var result = await _nodeServices.InvokeAsync<string>(paramsObjects[0].ToString(), HttpContext.Request.Url?.LocalPath ?? "/", jsonObjects);
+            var result = await _nodeServices.InvokeAsync<string>(entryFilePath, HttpContext.Request.Url?.LocalPath ?? "/", JsonConvert.SerializeObject(new ParamsWrapper(globalData, routeData), _serializerSettings));
             return new NodeResult(result);
-        }        
+        }
     }
 }
