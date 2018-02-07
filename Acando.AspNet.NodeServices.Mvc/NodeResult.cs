@@ -17,6 +17,7 @@ namespace Acando.AspNet.NodeServices.Mvc
         {
             if (_isJson)
             {
+                context.HttpContext.Response.Headers.Add("Cache-Control", "no-cache, max-age=0, must-revalidate, no-store");
                 context.HttpContext.Response.ContentType = "application/json";
             }
 
