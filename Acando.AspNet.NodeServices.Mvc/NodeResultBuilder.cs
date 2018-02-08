@@ -28,7 +28,7 @@
             _nodeServices = nodeServices;
             _renderServerSide = timeoutInSeconds > 0;
             _timeoutInSeconds = timeoutInSeconds;
-            _serializerSettings = new JsonSerializerSettings { ContractResolver = new CamelCasePropertyNamesContractResolver() };
+            _serializerSettings = new JsonSerializerSettings { ContractResolver = new CamelCaseExceptDictionaryKeysResolver() };
             _nodeServerEntryFilePath = ConfigurationManager.AppSettings["NodeServices.Mvc.NodeServerEntryFilePath"] ?? "./react.server";
         }
 
@@ -155,6 +155,27 @@
         }
 
         #endregion
+
+        /// <summary>
+        /// This class is used to override the JSON serialization
+        /// </summary>
+        private class CamelCaseExceptDictionaryKeysResolver : CamelCasePropertyNamesContractResolver
+        {
+
+            /// <summary>
+            /// Preserve the casing for keys in Dictionaries
+            /// </summary>
+            /// <param name="objectType"></param>
+            /// <returns></returns>
+            protected override JsonDictionaryContract CreateDictionaryContract(Type objectType)
+            {
+                JsonDictionaryContract contract = base.CreateDictionaryContract(objectType);
+
+                contract.DictionaryKeyResolver = propertyName => propertyName;
+
+                return contract;
+            }
+        }
 
         private class ParamsWrapper
         {
