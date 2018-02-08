@@ -15,30 +15,39 @@
         }
 
         /// <summary>
-        /// Returns a NodeResult with the input params as input to the node method
+        /// Returns an ActionResult with the input params as input to the node method
         /// </summary>
         /// <returns></returns>
-        protected async Task<NodeResult> NodeResultAsync(object customData)
-        {
-            return await _builder.NodeResultAsync(customData);
-        }
-        
-        /// <summary>
-        /// Returns a NodeResult with the input params as input to the node method
-        /// </summary>
-        /// <returns></returns>
-        protected async Task<NodeResult> NodeResultAsync(object globalData, object routeData)
+        protected async Task<ActionResult> NodeResultAsync(object globalData, object routeData)
         {
             return await _builder.NodeResultAsync(globalData, routeData);
         }
 
         /// <summary>
-        /// Returns a NodeResult based on a custom NodeServerEntryFilePath
+        /// Returns an ActionResult that renders to a view with the input params as input to the node method
         /// </summary>
         /// <returns></returns>
-        protected async Task<NodeResult> NodeResultEntryFileAsync(string entryFilePath, object globalData, object routeData)
+        protected async Task<ActionResult> PartialNodeResultAsync(object globalData, object routeData)
+        {
+            return await _builder.PartialNodeResultAsync(globalData, routeData);
+        }
+
+        /// <summary>
+        /// Returns an ActionResult based on a custom NodeServerEntryFilePath
+        /// </summary>
+        /// <returns></returns>
+        protected async Task<ActionResult> NodeResultEntryFileAsync(string entryFilePath, object globalData, object routeData)
         {
             return await _builder.NodeResultEntryFileAsync(entryFilePath, globalData, routeData);
+        }
+
+        /// <summary>
+        /// Returns an ActionResult that renders to a view based on a custom NodeServerEntryFilePath
+        /// </summary>
+        /// <returns></returns>
+        protected async Task<ActionResult> PartiualNodeResultEntryFileAsync(string entryFilePath, object globalData, object routeData)
+        {
+            return await _builder.PartialNodeResultEntryFileAsync(entryFilePath, globalData, routeData);
         }
     }
 }
