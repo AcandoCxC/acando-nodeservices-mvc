@@ -1,6 +1,7 @@
 ﻿namespace Acando.AspNet.NodeServices.Mvc
 {
     using System.Configuration;
+    using System.Net;
     using System.Web;
     using System.Threading.Tasks;
     using Newtonsoft.Json;
@@ -22,6 +23,7 @@
         private readonly string _nodeServerEntryFilePath;
         private readonly bool _renderServerSide;
         private readonly int _timeoutInSeconds;
+        private readonly bool _disableFallbackRendering;
 
         public NodeResultBuilder(INodeServices nodeServices, int timeoutInSeconds = 3)
         {
@@ -30,6 +32,8 @@
             _timeoutInSeconds = timeoutInSeconds;
             _serializerSettings = new JsonSerializerSettings { ContractResolver = new CamelCaseExceptDictionaryKeysResolver() };
             _nodeServerEntryFilePath = ConfigurationManager.AppSettings["NodeServices.Mvc.NodeServerEntryFilePath"] ?? "./react.server";
+            bool.TryParse(ConfigurationManager.AppSettings["NodeServices.Mvc.DisableFallbackRendering"], out var disableFallback);
+            _disableFallbackRendering = disableFallback;
         }
 
         #region PartialRendering 
@@ -77,6 +81,11 @@
                 }
 
                 return new PartialNodeResult(result, wrapper.GlobalDataJson, wrapper.RouteDataJson);
+            }
+            catch (TimeoutRejectedException timeoutException)
+            {
+                Logger.Error("Failed to Server Render React due to timeout. Defaulted to client rendering.", timeoutException);
+                return new PartialNodeResult(wrapper.GlobalDataJson, wrapper.RouteDataJson);
             }
             catch (TimeoutException timeoutException)
             {
@@ -144,11 +153,34 @@
             }
             catch (TimeoutException timeoutException)
             {
+                if (_disableFallbackRendering)
+                {
+                    Logger.Error("Failed to Server Render React due to timeout.", timeoutException);
+                    return new HttpStatusCodeResult(HttpStatusCode.ServiceUnavailable);
+                }
+
+                Logger.Error("Failed to Server Render React due to timeout. Defaulted to client rendering.", timeoutException);
+                return new PartialNodeResult(wrapper.GlobalDataJson, wrapper.RouteDataJson);
+            }
+            catch (TimeoutRejectedException timeoutException)
+            {
+                if (_disableFallbackRendering)
+                {
+                    Logger.Error("Failed to Server Render React due to timeout.", timeoutException);
+                    return new HttpStatusCodeResult(HttpStatusCode.ServiceUnavailable);
+                }
+
                 Logger.Error("Failed to Server Render React due to timeout. Defaulted to client rendering.", timeoutException);
                 return new PartialNodeResult(wrapper.GlobalDataJson, wrapper.RouteDataJson);
             }
             catch (Exception exception)
             {
+                if (_disableFallbackRendering)
+                {
+                    Logger.Error("Failed to Server Render React.", exception);
+                    return new HttpStatusCodeResult(500, exception.Message);
+                }
+
                 Logger.Error("Failed to Server Render React. Defaulted to client rendering.", exception);
                 return new PartialNodeResult(wrapper.GlobalDataJson, wrapper.RouteDataJson);
             }
