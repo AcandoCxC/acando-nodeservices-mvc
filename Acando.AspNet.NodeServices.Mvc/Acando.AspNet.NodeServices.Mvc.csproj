@@ -76,6 +76,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="JsonNodeResult.cs" />
+    <Compile Include="NodeResultData.cs" />
     <Compile Include="NodeResultModel.cs" />
     <Compile Include="PartialNodeResult.cs" />
     <Compile Include="RequestExtensions.cs" />

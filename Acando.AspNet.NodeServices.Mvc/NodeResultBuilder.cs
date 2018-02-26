@@ -49,7 +49,7 @@
 
             if (HttpContext.Current.Request.HasJsonAcceptType())
             {
-                return new PartialNodeResult(wrapper.RouteDataJson);
+                return new JsonNodeResult(wrapper.RouteDataJson);
             }
 
             if (_renderServerSide == false)
@@ -61,11 +61,11 @@
             {
                 var wrapperJson = JsonConvert.SerializeObject(new { globalData = wrapper.GlobalData, routeData = wrapper.RouteDataDictionary }, _serializerSettings);
 
-                string result;
+                NodeResultData result;
 
                 var timeoutPolicy = Policy.TimeoutAsync(_timeoutInSeconds, TimeoutStrategy.Pessimistic);
 
-                var policyResult = await timeoutPolicy.ExecuteAndCaptureAsync(() => _nodeServices.InvokeAsync<string>(entryFilePath, wrapperJson));
+                var policyResult = await timeoutPolicy.ExecuteAndCaptureAsync(() => _nodeServices.InvokeAsync<NodeResultData>(entryFilePath, wrapperJson));
 
                 if (policyResult.Outcome == OutcomeType.Successful)
                 {
