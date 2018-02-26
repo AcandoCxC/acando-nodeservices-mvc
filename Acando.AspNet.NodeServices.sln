@@ -1,11 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26430.12
+VisualStudioVersion = 15.0.27004.2002
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Acando.AspNet.NodeServices.Mvc", "Acando.AspNet.NodeServices.Mvc\Acando.AspNet.NodeServices.Mvc.csproj", "{FF8DC685-F318-455C-AC6C-26996630E458}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Acando.AspNet.NodeServices.Episerver", "Acando.AspNet.NodeServices.Episerver\Acando.AspNet.NodeServices.Episerver.csproj", "{BEF56205-E5FA-4A95-A0E6-C8DCF795A013}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,12 +15,11 @@ Global
 		{FF8DC685-F318-455C-AC6C-26996630E458}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FF8DC685-F318-455C-AC6C-26996630E458}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FF8DC685-F318-455C-AC6C-26996630E458}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BEF56205-E5FA-4A95-A0E6-C8DCF795A013}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BEF56205-E5FA-4A95-A0E6-C8DCF795A013}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BEF56205-E5FA-4A95-A0E6-C8DCF795A013}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BEF56205-E5FA-4A95-A0E6-C8DCF795A013}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {893E0B9C-5AA1-47A3-9D71-7D80EF9F1661}
 	EndGlobalSection
 EndGlobal
