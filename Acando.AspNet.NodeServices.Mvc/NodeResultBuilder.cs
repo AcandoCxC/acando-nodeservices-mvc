@@ -13,12 +13,15 @@
     using log4net;
     using Polly;
     using Polly.Timeout;
+    using System.Runtime.Caching;
+    using LazyCache;
 
     public class NodeResultBuilder
     {
         private static readonly ILog Logger = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private readonly INodeServices _nodeServices;
+        private readonly IAppCache _cache;
         private readonly JsonSerializerSettings _serializerSettings;
         private readonly string _nodeServerEntryFilePath;
         private readonly bool _renderServerSide;
@@ -28,6 +31,7 @@
         public NodeResultBuilder(INodeServices nodeServices, int timeoutInSeconds = 3)
         {
             _nodeServices = nodeServices;
+            _cache = new CachingService(MemoryCache.Default);
             _renderServerSide = timeoutInSeconds > 0;
             _timeoutInSeconds = timeoutInSeconds;
             _serializerSettings = new JsonSerializerSettings { ContractResolver = new CamelCaseExceptDictionaryKeysResolver() };
@@ -38,12 +42,12 @@
 
         #region PartialRendering 
 
-        public async Task<ActionResult> PartialNodeResultAsync(object globalData, object routeData)
+        public async Task<ActionResult> PartialNodeResultAsync(object globalData, object routeData, string cacheKey = "", int cacheTimeOutInSeconds = 0)
         {
-            return await PartialNodeResultBaseAsync(_nodeServerEntryFilePath, globalData, routeData);
+            return await PartialNodeResultBaseAsync(_nodeServerEntryFilePath, globalData, routeData, cacheKey, cacheTimeOutInSeconds);
         }
-
-        private async Task<ActionResult> PartialNodeResultBaseAsync(string entryFilePath, object globalData, object routeData)
+        
+        private async Task<ActionResult> PartialNodeResultBaseAsync(string entryFilePath, object globalData, object routeData, string cacheKey = "", int cacheInSeconds = 0)
         {
             var wrapper = new ParamsWrapper(globalData, routeData, _serializerSettings);
 
@@ -59,25 +63,15 @@
 
             try
             {
-                var wrapperJson = JsonConvert.SerializeObject(new { globalData = wrapper.GlobalData, routeData = wrapper.RouteDataDictionary }, _serializerSettings);
-
                 NodeResultData result;
 
-                var timeoutPolicy = Policy.TimeoutAsync(_timeoutInSeconds, TimeoutStrategy.Pessimistic);
-
-                var policyResult = await timeoutPolicy.ExecuteAndCaptureAsync(() => _nodeServices.InvokeAsync<NodeResultData>(entryFilePath, wrapperJson));
-
-                if (policyResult.Outcome == OutcomeType.Successful)
+                if (_cache != null && !string.IsNullOrEmpty(cacheKey) && cacheInSeconds > 0)
                 {
-                    result = policyResult.Result;
+                    result = await _cache.GetOrAddAsync(cacheKey, () => GetPartialNodeResultData(entryFilePath, wrapper), DateTimeOffset.Now.AddSeconds(cacheInSeconds));
                 }
                 else
                 {
-                    if (policyResult.ExceptionType.HasValue)
-                    {
-                        throw policyResult.FinalException;
-                    }
-                    throw new TimeoutException("InvokeAsync policy timed out.");
+                    result = await GetPartialNodeResultData(entryFilePath, wrapper);
                 }
 
                 return new PartialNodeResult(result, wrapper.GlobalDataJson, wrapper.RouteDataJson);
@@ -99,6 +93,37 @@
             }
         }
 
+        private async Task<NodeResultData> GetPartialNodeResultData(string entryFilePath, ParamsWrapper wrapper)
+        {
+            var wrapperJson =
+                JsonConvert.SerializeObject(new {globalData = wrapper.GlobalData, routeData = wrapper.RouteDataDictionary},
+                    _serializerSettings);
+
+            NodeResultData result;
+
+            var timeoutPolicy = Policy.TimeoutAsync(_timeoutInSeconds, TimeoutStrategy.Pessimistic);
+
+            var policyResult =
+                await timeoutPolicy.ExecuteAndCaptureAsync(() =>
+                    _nodeServices.InvokeAsync<NodeResultData>(entryFilePath, wrapperJson));
+
+            if (policyResult.Outcome == OutcomeType.Successful)
+            {
+                result = policyResult.Result;
+            }
+            else
+            {
+                if (policyResult.ExceptionType.HasValue)
+                {
+                    throw policyResult.FinalException;
+                }
+
+                throw new TimeoutException("InvokeAsync policy timed out.");
+            }
+
+            return result;
+        }
+
         public async Task<ActionResult> PartialNodeResultEntryFileAsync(string entryFilePath, object globalData, object routeData)
         {
             return await PartialNodeResultBaseAsync(entryFilePath, globalData, routeData);
@@ -107,9 +132,9 @@
         #endregion
 
         #region FullRendering
-        public async Task<ActionResult> NodeResultAsync(object globalData, object routeData)
+        public async Task<ActionResult> NodeResultAsync(object globalData, object routeData, string cacheKey = "", int cacheTimeOutInSeconds = 0)
         {
-            return await NodeResultBaseAsync(_nodeServerEntryFilePath, globalData, routeData);
+            return await NodeResultBaseAsync(_nodeServerEntryFilePath, globalData, routeData, cacheKey, cacheTimeOutInSeconds);
         }
 
         public async Task<ActionResult> NodeResultEntryFileAsync(string entryFilePath, object globalData, object routeData)
@@ -117,7 +142,7 @@
             return await NodeResultBaseAsync(entryFilePath, globalData, routeData);
         }
 
-        private async Task<ActionResult> NodeResultBaseAsync(string entryfilePath, object globalData, object routeData)
+        private async Task<ActionResult> NodeResultBaseAsync(string entryfilePath, object globalData, object routeData, string cacheKey = "", int cacheInSeconds = 0)
         {
             var wrapper = new ParamsWrapper(globalData, routeData, _serializerSettings);
 
@@ -128,27 +153,17 @@
 
             try
             {
-                var wrapperJson = JsonConvert.SerializeObject(new { globalData = wrapper.GlobalData, routeData = wrapper.RouteDataDictionary }, _serializerSettings);
-
                 string result;
 
-                var timeoutPolicy = Policy.TimeoutAsync(_timeoutInSeconds, TimeoutStrategy.Pessimistic);
-
-                var policyResult = await timeoutPolicy.ExecuteAndCaptureAsync(() => _nodeServices.InvokeAsync<string>(entryfilePath, wrapperJson));
-
-                if (policyResult.Outcome == OutcomeType.Successful)
+                if (_cache != null && !string.IsNullOrEmpty(cacheKey) && cacheInSeconds > 0)
                 {
-                    result = policyResult.Result;
+                    result = await _cache.GetOrAddAsync(cacheKey, () => GetNodeResultData(entryfilePath, wrapper), DateTimeOffset.Now.AddSeconds(cacheInSeconds));
                 }
                 else
                 {
-                    if (policyResult.ExceptionType.HasValue)
-                    {
-                        throw policyResult.FinalException;
-                    }
-                    throw new TimeoutException("InvokeAsync policy timed out.");
+                    result = await GetNodeResultData(entryfilePath, wrapper);
                 }
-
+                
                 return new NodeResult(result);
             }
             catch (TimeoutException timeoutException)
@@ -184,6 +199,36 @@
                 Logger.Error("Failed to Server Render React. Defaulted to client rendering.", exception);
                 return new PartialNodeResult(wrapper.GlobalDataJson, wrapper.RouteDataJson);
             }
+        }
+
+        private async Task<string> GetNodeResultData(string entryfilePath, ParamsWrapper wrapper)
+        {
+            var wrapperJson =
+                JsonConvert.SerializeObject(new {globalData = wrapper.GlobalData, routeData = wrapper.RouteDataDictionary},
+                    _serializerSettings);
+
+            string result;
+
+            var timeoutPolicy = Policy.TimeoutAsync(_timeoutInSeconds, TimeoutStrategy.Pessimistic);
+
+            var policyResult =
+                await timeoutPolicy.ExecuteAndCaptureAsync(() => _nodeServices.InvokeAsync<string>(entryfilePath, wrapperJson));
+
+            if (policyResult.Outcome == OutcomeType.Successful)
+            {
+                result = policyResult.Result;
+            }
+            else
+            {
+                if (policyResult.ExceptionType.HasValue)
+                {
+                    throw policyResult.FinalException;
+                }
+
+                throw new TimeoutException("InvokeAsync policy timed out.");
+            }
+
+            return result;
         }
 
         #endregion
